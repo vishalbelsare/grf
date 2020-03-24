@@ -20,6 +20,7 @@
 #include "prediction/InstrumentalPredictionStrategy.h"
 #include "prediction/QuantilePredictionStrategy.h"
 #include "prediction/RegressionPredictionStrategy.h"
+#include "prediction/RegressionDiscontinuityPredictionStrategy.h"
 #include "prediction/LocalLinearPredictionStrategy.h"
 #include "prediction/LLCausalPredictionStrategy.h"
 
@@ -47,6 +48,12 @@ ForestPredictor quantile_predictor(uint num_threads,
 ForestPredictor regression_predictor(uint num_threads) {
   num_threads = ForestOptions::validate_num_threads(num_threads);
   std::unique_ptr<OptimizedPredictionStrategy> prediction_strategy(new RegressionPredictionStrategy());
+  return ForestPredictor(num_threads, std::move(prediction_strategy));
+}
+
+ForestPredictor regression_discontinuity_predictor(uint num_threads) {
+  num_threads = ForestOptions::validate_num_threads(num_threads);
+  std::unique_ptr<OptimizedPredictionStrategy> prediction_strategy(new RegressionDiscontinuityPredictionStrategy());
   return ForestPredictor(num_threads, std::move(prediction_strategy));
 }
 

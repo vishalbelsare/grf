@@ -31,6 +31,8 @@ ForestPredictor quantile_predictor(uint num_threads,
 
 ForestPredictor regression_predictor(uint num_threads);
 
+ForestPredictor regression_discontinuity_predictor(uint num_threads);
+
 ForestPredictor ll_regression_predictor(uint num_threads,
                                         std::vector<double> lambdas,
                                         bool weight_penalty,

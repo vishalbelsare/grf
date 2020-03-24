@@ -18,11 +18,13 @@
 #include "forest/ForestTrainers.h"
 #include "prediction/InstrumentalPredictionStrategy.h"
 #include "prediction/RegressionPredictionStrategy.h"
+#include "prediction/RegressionDiscontinuityPredictionStrategy.h"
 #include "relabeling/CustomRelabelingStrategy.h"
 #include "relabeling/InstrumentalRelabelingStrategy.h"
 #include "relabeling/LLRegressionRelabelingStrategy.h"
 #include "relabeling/NoopRelabelingStrategy.h"
 #include "relabeling/QuantileRelabelingStrategy.h"
+#include "relabeling/RegressionDiscontinuityRelabelingStrategy.h"
 #include "splitting/factory/InstrumentalSplittingRuleFactory.h"
 #include "splitting/factory/ProbabilitySplittingRuleFactory.h"
 #include "splitting/factory/RegressionSplittingRuleFactory.h"
@@ -57,6 +59,19 @@ ForestTrainer regression_trainer() {
   std::unique_ptr<RelabelingStrategy> relabeling_strategy(new NoopRelabelingStrategy());
   std::unique_ptr<SplittingRuleFactory> splitting_rule_factory(new RegressionSplittingRuleFactory());
   std::unique_ptr<OptimizedPredictionStrategy> prediction_strategy(new RegressionPredictionStrategy());
+
+  return ForestTrainer(std::move(relabeling_strategy),
+                       std::move(splitting_rule_factory),
+                       std::move(prediction_strategy));
+}
+
+ForestTrainer regression_discontinuity_trainer(double reduced_form_weight,
+                                               bool stabilize_splits) {
+  std::unique_ptr<RelabelingStrategy> relabeling_strategy(new RegressionDiscontinuityRelabelingStrategy(reduced_form_weight));
+  std::unique_ptr<SplittingRuleFactory> splitting_rule_factory = stabilize_splits
+      ? std::unique_ptr<SplittingRuleFactory>(new InstrumentalSplittingRuleFactory())
+      : std::unique_ptr<SplittingRuleFactory>(new RegressionSplittingRuleFactory());
+  std::unique_ptr<OptimizedPredictionStrategy> prediction_strategy(new RegressionDiscontinuityPredictionStrategy());
 
   return ForestTrainer(std::move(relabeling_strategy),
                        std::move(splitting_rule_factory),

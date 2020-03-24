@@ -29,6 +29,9 @@ ForestTrainer quantile_trainer(const std::vector<double>& quantiles);
 
 ForestTrainer regression_trainer();
 
+ForestTrainer regression_discontinuity_trainer(double reduced_form_weight,
+                                               bool stabilize_splits);
+
 ForestTrainer ll_regression_trainer(double split_lambda,
                                    bool weight_penalty,
                                    const std::vector<double>& overall_beta,
