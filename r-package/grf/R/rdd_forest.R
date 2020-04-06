@@ -79,7 +79,7 @@
 #'
 #' @export
 
-rdd_forest <- function(X, Y, W, #Z,
+rdd_forest <- function(X, Y, W, Z,
                        Y.hat = NULL,
                        W.hat = NULL,
                        num.trees = 2000,
@@ -188,8 +188,10 @@ rdd_forest <- function(X, Y, W, #Z,
     forest[["X.orig"]] <- X
     forest[["Y.orig"]] <- Y
     forest[["W.orig"]] <- W
+    forest[["Z.orig"]] <- Z
     forest[["Y.hat"]] <- Y.hat
     forest[["W.hat"]] <- W.hat
+    forest[["Z.hat"]] <- Z.hat
     forest[["clusters"]] <- clusters
     forest[["equalize.cluster.weights"]] <- equalize.cluster.weights
     forest[["sample.weights"]] <- sample.weights
