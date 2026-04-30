@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -18,8 +20,10 @@
 #ifndef GRF_FORESTTRAINER_H
 #define GRF_FORESTTRAINER_H
 
+#include <atomic>
 #include <memory>
 
+#include "commons/ProgressBar.h"
 #include "prediction/OptimizedPredictionStrategy.h"
 #include "relabeling/RelabelingStrategy.h"
 #include "splitting/factory/SplittingRuleFactory.h"
@@ -48,7 +52,9 @@ private:
       size_t start,
       size_t num_trees,
       const Data& data,
-      const ForestOptions& options) const;
+      const ForestOptions& options,
+      ProgressBar& progress_bar,
+      std::atomic<bool>& user_interrupt_flag) const;
 
   std::unique_ptr<Tree> train_tree(const Data& data,
                                    RandomSampler& sampler,

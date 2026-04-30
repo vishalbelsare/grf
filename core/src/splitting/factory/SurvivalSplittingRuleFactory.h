@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -24,15 +26,18 @@
 namespace grf {
 
 /**
- * A factory that produces standard surivival (logrank) splitting rules.
+ * A factory that produces survival (logrank) splitting rules.
  */
 class SurvivalSplittingRuleFactory final: public SplittingRuleFactory {
 public:
-  SurvivalSplittingRuleFactory() = default;
+  SurvivalSplittingRuleFactory(bool fast_logrank);
 
   std::unique_ptr<SplittingRule> create(size_t max_num_unique_values,
+                                        const Data& data,
                                         const TreeOptions& options) const;
 private:
+  bool fast_logrank;
+
   DISALLOW_COPY_AND_ASSIGN(SurvivalSplittingRuleFactory);
 };
 

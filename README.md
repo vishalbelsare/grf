@@ -1,7 +1,7 @@
 # generalized random forests <a href='https://grf-labs.github.io/grf/'><img src='https://raw.githubusercontent.com/grf-labs/grf/master/images/logo/grf_logo_wbg_cropped.png' align="right" height="120" /></a>
 
 [![CRANstatus](https://www.r-pkg.org/badges/version/grf)](https://cran.r-project.org/package=grf)
-![CRAN Downloads overall](http://cranlogs.r-pkg.org/badges/grand-total/grf)
+[![](https://cranlogs.r-pkg.org/badges/grand-total/grf)](https://cran.r-project.org/package=grf)
 [![Build Status](https://dev.azure.com/grf-labs/grf/_apis/build/status/grf-labs.grf?branchName=master)](https://dev.azure.com/grf-labs/grf/_build/latest?definitionId=2&branchName=master)
 
 A package for forest-based statistical estimation and inference. GRF provides non-parametric methods for heterogeneous treatment effects estimation (optionally using right-censored outcomes, multiple treatment arms or outcomes, or instrumental variables), as well as least-squares regression, quantile regression, and survival regression, all with support for missing covariates.
@@ -36,7 +36,7 @@ The current development version can be installed from source using devtools.
 devtools::install_github("grf-labs/grf", subdir = "r-package/grf")
 ```
 
-Note that to install from source, a compiler that implements C++11 or later is required. If installing on Windows, the RTools toolchain is also required.
+Note that to install from source, a compiler that implements C++17 or later is required. If installing on Windows, the RTools toolchain is also required.
 
 ### Usage Examples
 
@@ -161,6 +161,20 @@ Imke Mayer, Erik Sverdrup, Tobias Gauss, Jean-Denis Moyer, Stefan Wager and Juli
 [<a href="https://projecteuclid.org/euclid.aoas/1600454872">paper</a>,
 <a href="https://arxiv.org/pdf/1910.10624.pdf">arxiv</a>]
 
+Erik Sverdrup, Maria Petukhova, and Stefan Wager.
+<b>Estimating Treatment Effect Heterogeneity in Psychiatry: A Review and Tutorial with Causal Forests.</b>
+<i>International Journal of Methods in Psychiatric Research</i>, 34(2), 2025.
+[<a href="https://doi.org/10.1002/mpr.70015">paper</a>,
+<a href="https://arxiv.org/abs/2409.01578">arxiv</a>]
+
+Erik Sverdrup, James Yang, and Michael LeBlanc.
+<b>Efficient Log-Rank Updates for Random Survival Forests.</b> 2025.
+[<a href="https://arxiv.org/abs/2510.03665">arxiv</a>]
+
+Stefan Wager.
+<b>Causal Inference: A Statistical Learning Approach.</b> 2024.
+[<a href="https://web.stanford.edu/~swager/causal_inf_book.pdf">pdf</a>]
+
 Stefan Wager and Susan Athey.
 <b>Estimation and Inference of Heterogeneous Treatment Effects using Random Forests.</b>
 <i>Journal of the American Statistical Association</i>, 113(523), 2018.
@@ -168,5 +182,7 @@ Stefan Wager and Susan Athey.
 <a href="https://arxiv.org/abs/1510.04342">arxiv</a>]
 
 Steve Yadlowsky, Scott Fleming, Nigam Shah, Emma Brunskill, and Stefan Wager.
-<b>Evaluating Treatment Prioritization Rules via Rank-Weighted Average Treatment Effects.</b> 2021.
-[<a href="https://arxiv.org/abs/2111.07966">arxiv</a>]
+<b>Evaluating Treatment Prioritization Rules via Rank-Weighted Average Treatment Effects.</b>
+<i>Journal of the American Statistical Association</i>, 120(549), 2025.
+[<a href="https://doi.org/10.1080/01621459.2024.2393466">paper</a>,
+<a href="https://arxiv.org/abs/2111.07966">arxiv</a>]

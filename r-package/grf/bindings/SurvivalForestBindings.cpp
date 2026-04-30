@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -44,9 +46,14 @@ Rcpp::List survival_train(const Rcpp::NumericMatrix& train_matrix,
                           unsigned int samples_per_cluster,
                           bool compute_oob_predictions,
                           int prediction_type,
+                          bool fast_logrank,
                           unsigned int num_threads,
-                          unsigned int seed) {
-  ForestTrainer trainer = survival_trainer();
+                          unsigned int seed,
+                          bool legacy_seed,
+                          bool verbose) {
+  grf::runtime_context.forest_name = "survival";
+  grf::runtime_context.verbose_stream = verbose ? &Rcpp::Rcout : nullptr;
+  ForestTrainer trainer = survival_trainer(fast_logrank);
 
   Data data = RcppUtilities::convert_data(train_matrix);
   data.set_outcome_index(outcome_index);
@@ -58,11 +65,12 @@ Rcpp::List survival_train(const Rcpp::NumericMatrix& train_matrix,
   size_t ci_group_size = 1;
   size_t imbalance_penalty = 0;
   ForestOptions options(num_trees, ci_group_size, sample_fraction, mtry, min_node_size, honesty,
-      honesty_fraction, honesty_prune_leaves, alpha, imbalance_penalty, num_threads, seed, clusters, samples_per_cluster);
+      honesty_fraction, honesty_prune_leaves, alpha, imbalance_penalty, num_threads, seed, legacy_seed, clusters, samples_per_cluster);
   Forest forest = trainer.train(data, options);
 
   std::vector<Prediction> predictions;
   if (compute_oob_predictions) {
+    grf::runtime_context.verbose_stream = nullptr;
     ForestPredictor predictor = survival_predictor(num_threads, num_failures, prediction_type);
     predictions = predictor.predict_oob(forest, data, false);
   }
@@ -80,7 +88,9 @@ Rcpp::List survival_predict(const Rcpp::List& forest_object,
                             int prediction_type,
                             const Rcpp::NumericMatrix& test_matrix,
                             unsigned int num_threads,
-                            size_t num_failures) {
+                            size_t num_failures,
+                            bool verbose) {
+  grf::runtime_context.verbose_stream = verbose ? &Rcpp::Rcout : nullptr;
   Data train_data = RcppUtilities::convert_data(train_matrix);
   train_data.set_outcome_index(outcome_index);
   train_data.set_censor_index(censor_index);
@@ -107,7 +117,9 @@ Rcpp::List survival_predict_oob(const Rcpp::List& forest_object,
                                 bool use_sample_weights,
                                 int prediction_type,
                                 unsigned int num_threads,
-                                size_t num_failures) {
+                                size_t num_failures,
+                                bool verbose) {
+  grf::runtime_context.verbose_stream = verbose ? &Rcpp::Rcout : nullptr;
   Data data = RcppUtilities::convert_data(train_matrix);
   data.set_outcome_index(outcome_index);
   data.set_censor_index(censor_index);

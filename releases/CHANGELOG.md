@@ -4,6 +4,36 @@ All notable changes to `grf` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] - 2026-03-04
+
+### Fixed
+- This is only a patch release that silences an innocuous compiler warning flagged by CRAN. [#1549](https://github.com/grf-labs/grf/pull/1549)
+
+## [2.6.0] - 2026-03-03
+
+### Added
+- Add a _tqdm_ progress bar to display progress during training and prediction. This can be enabled via `options(grf.verbose = TRUE)`. Interrupt handling is also added, allowing users to cancel long-running training jobs without restarting R. [#1527](https://github.com/grf-labs/grf/pull/1527), [#1532](https://github.com/grf-labs/grf/pull/1532)
+- Improve the speed of `DefaultPredictionCollector`, which is used for forest prediction in models such as `survival_forest` and `quantile_forest`. [#1531](https://github.com/grf-labs/grf/pull/1531)
+- Add two RCT example datasets used in the vignettes. These can be loaded via `data("schoolrct")` and `data("attentionrct")`. [#1545](https://github.com/grf-labs/grf/pull/1545)
+- Add an updated introductory vignette and bundle the [PDF version](https://cran.r-project.org/web/packages/grf/vignettes/grf_guide.pdf) with the CRAN package. [#1544](https://github.com/grf-labs/grf/pull/1544)
+
+### Changed
+- Require C++17 or higher for compilation (added to SystemRequirements). On older systems where packages are installed from source, mixing packages compiled under different C++ standards may lead to runtime issues. In such cases, users may need to enable C++17 (or higher) in _~/.R/Makevars_ and recompile all relevant dependencies (e.g., `Rcpp`) before installing `grf`. [#1543](https://github.com/grf-labs/grf/pull/1543)
+
+## [2.5.0] - 2025-10-09
+
+### Added
+- Add option `fast.logrank` for faster survival forest training in `survival_forest` and `causal_survival_forest`. This algorithmic approximation speeds up computation of the forest training criterion, making training time ~independent of the number of time points in the data. Statistical performance is essentially unchanged, but prediction outputs may differ slightly from previous versions. For backward compatibility, this option is currently disabled (FALSE) by default. [#1509](https://github.com/grf-labs/grf/pull/1509)
+
+## [2.4.0] - 2024-11-15
+
+### Fixed
+- **IMPORTANT:** Make random seed behavior independent of the number of cores the forest is trained with. This fix means code from previous versions will produce slightly different results, even with the same random seed. A global package option `options(grf.legacy.seed)` is added for users who wish to exactly recover past results without reinstalling a previous grf version. [#1447](https://github.com/grf-labs/grf/pull/1447)
+- Respect `num.threads` argument in internal debiasing weights estimation. [#1437](https://github.com/grf-labs/grf/pull/1437)
+- Relax a minimum cluster size requirement in `boot_grf`. [#1412](https://github.com/grf-labs/grf/pull/1412)
+- Ensure input dimensions of covariate matrix X is non-zero. [#1408](https://github.com/grf-labs/grf/pull/1408)
+- Fix minor docstring typos. [#1406](https://github.com/grf-labs/grf/pull/1406), [#1420](https://github.com/grf-labs/grf/pull/1420), [#1443](https://github.com/grf-labs/grf/pull/1443)
+
 ## [2.3.2] - 2024-02-25
 
 ### Fixed

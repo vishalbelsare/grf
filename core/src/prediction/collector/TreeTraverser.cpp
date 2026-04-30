@@ -1,5 +1,7 @@
 /*-------------------------------------------------------------------------------
-  This file is part of generalized-random-forest.
+  Copyright (c) 2024 GRF Contributors.
+
+  This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,6 +21,7 @@
 #include "commons/utility.h"
 
 #include <future>
+#include <thread>
 
 namespace grf {
 
@@ -29,7 +32,10 @@ std::vector<std::vector<size_t>> TreeTraverser::get_leaf_nodes(
     const Forest& forest,
     const Data& data,
     bool oob_prediction) const {
+  std::atomic<bool> user_interrupt_flag {false};
+
   size_t num_trees = forest.get_trees().size();
+  ProgressBar progress_bar(num_trees, "prediction [traversal]: ");
 
   std::vector<std::vector<size_t>> leaf_nodes_by_tree;
   leaf_nodes_by_tree.reserve(num_trees);
@@ -51,15 +57,48 @@ std::vector<std::vector<size_t>> TreeTraverser::get_leaf_nodes(
                                  num_trees_batch,
                                  std::ref(forest),
                                  std::ref(data),
-                                 oob_prediction));
+                                 oob_prediction,
+                                 std::ref(progress_bar),
+                                 std::ref(user_interrupt_flag)));
   }
 
+  // Periodically check for user interrupts + update progress bar while threads are working.
+  bool working = true;
+  while (working) {
+    try {
+      grf::runtime_context.interrupt_handler();
+      progress_bar.update();
+    } catch (...) {
+      user_interrupt_flag = true;
+      // Adhere to good C++ hygiene and clean up the futures before rethrowing
+      for (auto& future : futures) {
+        if (future.valid()) {
+          try { (void) future.get(); } catch (...) {}
+        }
+      }
+      throw;
+    }
+    // Check if we can stop working
+    working = false;
+    for (const auto& future : futures) {
+      if (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) {
+        working = true;
+        break;
+      }
+    }
+    if (working) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  }
+
+  // Collect the final results
   for (auto& future : futures) {
     std::vector<std::vector<size_t>> leaf_nodes = future.get();
     leaf_nodes_by_tree.insert(leaf_nodes_by_tree.end(),
                               leaf_nodes.begin(),
                               leaf_nodes.end());
   }
+  progress_bar.final_update();
 
   return leaf_nodes_by_tree;
 };
@@ -86,17 +125,23 @@ std::vector<std::vector<size_t>> TreeTraverser::get_leaf_node_batch(
     size_t num_trees,
     const Forest& forest,
     const Data& data,
-    bool oob_prediction) const {
+    bool oob_prediction,
+    ProgressBar& progress_bar,
+    std::atomic<bool>& user_interrupt_flag) const {
 
   size_t num_samples = data.get_num_rows();
   std::vector<std::vector<size_t>> all_leaf_nodes(num_trees);
 
   for (size_t i = 0; i < num_trees; ++i) {
+    if (user_interrupt_flag) {
+      return std::vector<std::vector<size_t>>();
+    }
     const std::unique_ptr<Tree>& tree = forest.get_trees()[start + i];
 
     std::vector<bool> valid_samples = get_valid_samples(num_samples, tree, oob_prediction);
     std::vector<size_t> leaf_nodes = tree->find_leaf_nodes(data, valid_samples);
     all_leaf_nodes[i] = leaf_nodes;
+    progress_bar.increment(1);
   }
 
   return all_leaf_nodes;

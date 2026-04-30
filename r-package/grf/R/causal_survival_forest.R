@@ -87,6 +87,8 @@
 #'   "honesty.prune.leaves", "alpha", "imbalance.penalty"). If honesty is FALSE the honesty.* parameters are not tuned.
 #'  Default is "none" (no parameters are tuned).
 #' @param compute.oob.predictions Whether OOB predictions on training set should be precomputed. Default is TRUE.
+#' @param fast.logrank Whether to use the `fast.logrank` option when estimating doubly robust censoring corrections with
+#'   `survival_forest`. When enabled, training time is approximately independent of the number of time points. Default is FALSE.
 #' @param num.threads Number of threads used in training. By default, the number of threads is set
 #'                    to the maximum hardware concurrency.
 #' @param seed The seed of the C++ random number generator.
@@ -96,11 +98,13 @@
 #' @references Cui, Yifan, Michael R. Kosorok, Erik Sverdrup, Stefan Wager, and Ruoqing Zhu.
 #'  "Estimating Heterogeneous Treatment Effects with Right-Censored Data via Causal Survival Forests".
 #'  Journal of the Royal Statistical Society: Series B, 85(2), 2023.
-#'
 #' @references Sverdrup, Erik, and Stefan Wager.
 #'  "Treatment Heterogeneity with Right-Censored Outcomes Using grf".
 #'  ASA Lifetime Data Science Newsletter, January 2024
 #'  (\href{https://arxiv.org/abs/2312.02482}{arXiv:2312.02482}).
+#' @references Sverdrup, Erik, James Yang, and Michael LeBlanc.
+#'  "Efficient Log-Rank Updates for Random Survival Forests."
+#'  arXiv preprint arXiv:2510.03665, 2025.
 #'
 #' @examples
 #' \donttest{
@@ -172,6 +176,7 @@ causal_survival_forest <- function(X, Y, W, D,
                                    ci.group.size = 2,
                                    tune.parameters = "none",
                                    compute.oob.predictions = TRUE,
+                                   fast.logrank = FALSE,
                                    num.threads = NULL,
                                    seed = runif(1, 0, .Machine$integer.max)) {
   target <- match.arg(target)
@@ -257,6 +262,7 @@ causal_survival_forest <- function(X, Y, W, D,
                         alpha = alpha,
                         prediction.type = "Nelson-Aalen", # to guarantee non-zero estimates.
                         compute.oob.predictions = TRUE,
+                        fast.logrank = fast.logrank,
                         num.threads = num.threads,
                         seed = seed)
 
@@ -273,6 +279,7 @@ causal_survival_forest <- function(X, Y, W, D,
     # The survival function conditioning on being treated S(t, x, 1) estimated with an "S-learner".
     # Computing OOB estimates for modified training samples is not a workflow we have implemented,
     # so we do it with a manual workaround here (deleting/re-inserting precomputed predictions)
+    grf.verbose <- options("grf.verbose" = FALSE)
     .predictions <- sf.survival[["predictions"]]
     sf.survival[["predictions"]] <- NULL
     sf.survival[["X.orig"]][, ncol(X) + 1] <- rep(1, nrow(X))
@@ -282,6 +289,7 @@ causal_survival_forest <- function(X, Y, W, D,
     S0.hat <- predict(sf.survival, num.threads = num.threads)$predictions
     sf.survival[["X.orig"]][, ncol(X) + 1] <- W
     sf.survival[["predictions"]] <- .predictions
+    options(grf.verbose)
     if (target == "RMST") {
       Y.hat <- W.hat * expected_survival(S1.hat, sf.survival$failure.times) +
         (1 - W.hat) * expected_survival(S0.hat, sf.survival$failure.times)
@@ -330,7 +338,7 @@ causal_survival_forest <- function(X, Y, W, D,
                   "such that the probability of observing an event past the maximum follow-up time ",
                   "is at least M (i.e. P(T > horizon | X) > M).",
                   "This warning appears when M is less than 0.05, at which point causal survival forest",
-                  "can not be expected to deliver reliable estimates."), immediate. = TRUE)
+                  "can not be expected to deliver reliable estimates."))
   } else if (target == "RMST" && any(C.Y.hat < 0.2)) {
     warning(paste("Estimated censoring probabilities are lower than 0.2",
                   "- an identifying assumption is that there exists a fixed positive constant M",
@@ -339,7 +347,7 @@ causal_survival_forest <- function(X, Y, W, D,
   } else if (target == "survival.probability" && any(C.Y.hat <= 0.001)) {
     warning(paste("Estimated censoring probabilities go as low as:", round(min(C.Y.hat), 5),
                   "- forest estimates will likely be very unstable, a larger target `horizon`",
-                  "is recommended."), immediate. = TRUE)
+                  "is recommended."))
   } else if (target == "survival.probability" && any(C.Y.hat < 0.05)) {
     warning(paste("Estimated censoring probabilities are lower than 0.05",
                   "and forest estimates may not be stable. Using a smaller target `horizon`",
@@ -373,11 +381,14 @@ causal_survival_forest <- function(X, Y, W, D,
                ci.group.size = ci.group.size,
                compute.oob.predictions = compute.oob.predictions,
                num.threads = num.threads,
-               seed = seed)
+               seed = seed,
+               legacy.seed = get_legacy_seed(),
+               verbose = get_verbose())
 
   forest <- do.call.rcpp(causal_survival_train, c(data, args))
   class(forest) <- c("causal_survival_forest", "grf")
   forest[["seed"]] <- seed
+  forest[["num.threads"]] <- num.threads
   forest[["_psi"]] <- psi
   forest[["X.orig"]] <- X
   forest[["Y.orig"]] <- Y
@@ -405,7 +416,7 @@ causal_survival_forest <- function(X, Y, W, D,
 #'                Xi using only trees that did not use the i-th training example). Note
 #'                that this matrix should have the number of columns as the training
 #'                matrix, and that the columns must appear in the same order.
-#' @param num.threads Number of threads used in training. If set to NULL, the software
+#' @param num.threads Number of threads used in prediction. If set to NULL, the software
 #'                    automatically selects an appropriate amount.
 #' @param estimate.variance Whether variance estimates for \eqn{\hat\tau(x)} are desired
 #'                          (for confidence intervals).
@@ -481,7 +492,8 @@ predict.causal_survival_forest <- function(object,
 
   args <- list(forest.object = forest.short,
                num.threads = num.threads,
-               estimate.variance = estimate.variance)
+               estimate.variance = estimate.variance,
+               verbose = get_verbose())
 
   if (!is.null(newdata)) {
     validate_newdata(newdata, X, allow.na = TRUE)

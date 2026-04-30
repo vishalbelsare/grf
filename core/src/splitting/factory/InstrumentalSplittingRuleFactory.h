@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -35,6 +37,7 @@ class InstrumentalSplittingRuleFactory final: public SplittingRuleFactory {
 public:
   InstrumentalSplittingRuleFactory() = default;
   std::unique_ptr<SplittingRule> create(size_t max_num_unique_values,
+                                        const Data& data,
                                         const TreeOptions& options) const;
 private:
   DISALLOW_COPY_AND_ASSIGN(InstrumentalSplittingRuleFactory);

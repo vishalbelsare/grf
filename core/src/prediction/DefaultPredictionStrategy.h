@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -18,7 +20,6 @@
 #ifndef GRF_DEFAULTPREDICTIONSTRATEGY_H
 #define GRF_DEFAULTPREDICTIONSTRATEGY_H
 
-#include <unordered_map>
 #include <vector>
 
 #include "commons/globals.h"
@@ -49,7 +50,7 @@ public:
    * Computes a prediction for a single test sample.
    *
    * sample: the ID of the test sample.
-   * weights_by_sample: a map from neighboring sample ID, to a weight specifying
+   * weights_by_sample: a collection of neighboring sample IDs and weights specifying
    *     how often the sample appeared in the same leaf as the test sample. Note that
    *     these weights are normalized and will sum to 1.
    * train_data: the training data matrix.
@@ -57,7 +58,7 @@ public:
    *     be the same as the training matrix.
    */
   virtual std::vector<double> predict(size_t sample,
-    const std::unordered_map<size_t, double>& weights_by_sample,
+    const std::pair<std::vector<size_t>, std::vector<double>>& weights_by_sample,
     const Data& train_data,
     const Data& data) const = 0;
 
@@ -67,7 +68,7 @@ public:
    * sample: the ID of the test sample.
    * samples_by_tree: vector of samples in the same leaf as the test point,
    *    for each tree
-   * weights_by_sampleID: a map from neighboring sample ID, to a weight specifying
+   * weights_by_sampleID: a collection of neighboring sample IDs and weights specifying
    *     how often the sample appeared in the same leaf as the test sample. Note that
    *     these weights are normalized and will sum to 1.
    * train_data: the training data matrix.
@@ -79,7 +80,7 @@ public:
   virtual std::vector<double> compute_variance(
       size_t sample,
       const std::vector<std::vector<size_t>>& samples_by_tree,
-      const std::unordered_map<size_t, double>& weights_by_sampleID,
+      const std::pair<std::vector<size_t>, std::vector<double>>& weights_by_sampleID,
       const Data& train_data,
       const Data& data,
       size_t ci_group_size) const = 0;

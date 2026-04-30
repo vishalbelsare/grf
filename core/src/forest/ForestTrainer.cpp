@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -16,9 +18,12 @@
  #-------------------------------------------------------------------------------*/
 
 #include <algorithm>
+#include <chrono>
 #include <ctime>
+#include <exception>
 #include <future>
 #include <stdexcept>
+#include <thread>
 
 #include "commons/utility.h"
 #include "ForestTrainer.h"
@@ -44,8 +49,11 @@ Forest ForestTrainer::train(const Data& data, const ForestOptions& options) cons
 
 std::vector<std::unique_ptr<Tree>> ForestTrainer::train_trees(const Data& data,
                                                               const ForestOptions& options) const {
+  std::atomic<bool> user_interrupt_flag {false};
+
   size_t num_samples = data.get_num_rows();
   uint num_trees = options.get_num_trees();
+  ProgressBar progress_bar(num_trees, "training [" + grf::runtime_context.forest_name + "]: " );
 
   // Ensure that the sample fraction is not too small and honesty fraction is not too extreme.
   const TreeOptions& tree_options = options.get_tree_options();
@@ -79,15 +87,48 @@ std::vector<std::unique_ptr<Tree>> ForestTrainer::train_trees(const Data& data,
                                  start_index,
                                  num_trees_batch,
                                  std::ref(data),
-                                 options));
+                                 options,
+                                 std::ref(progress_bar),
+                                 std::ref(user_interrupt_flag)));
   }
 
+  // Periodically check for user interrupts + update progress bar while threads are working.
+  bool working = true;
+  while (working) {
+    try {
+      grf::runtime_context.interrupt_handler();
+      progress_bar.update();
+    } catch (...) {
+      user_interrupt_flag = true;
+      // Adhere to good C++ hygiene and clean up the futures before rethrowing
+      for (auto& future : futures) {
+        if (future.valid()) {
+          try { (void) future.get(); } catch (...) {}
+        }
+      }
+      throw;
+    }
+    // Check if we can stop working
+    working = false;
+    for (const auto& future : futures) {
+      if (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) {
+        working = true;
+        break;
+      }
+    }
+    if (working) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  }
+
+  // Collect the final results
   for (auto& future : futures) {
     std::vector<std::unique_ptr<Tree>> thread_trees = future.get();
     trees.insert(trees.end(),
                  std::make_move_iterator(thread_trees.begin()),
                  std::make_move_iterator(thread_trees.end()));
   }
+  progress_bar.final_update();
 
   return trees;
 }
@@ -96,7 +137,9 @@ std::vector<std::unique_ptr<Tree>> ForestTrainer::train_batch(
     size_t start,
     size_t num_trees,
     const Data& data,
-    const ForestOptions& options) const {
+    const ForestOptions& options,
+    ProgressBar& progress_bar,
+    std::atomic<bool>& user_interrupt_flag) const {
   size_t ci_group_size = options.get_ci_group_size();
 
   std::mt19937_64 random_number_generator(options.get_random_seed() + start);
@@ -105,17 +148,27 @@ std::vector<std::unique_ptr<Tree>> ForestTrainer::train_batch(
   trees.reserve(num_trees * ci_group_size);
 
   for (size_t i = 0; i < num_trees; i++) {
-    uint tree_seed = udist(random_number_generator);
+    if (user_interrupt_flag) {
+      return std::vector<std::unique_ptr<Tree>>();
+    }
+    uint tree_seed;
+    if (options.get_legacy_seed()) {
+      tree_seed = udist(random_number_generator);
+    } else {
+      tree_seed = static_cast<uint>(options.get_random_seed() + start + i);
+    }
     RandomSampler sampler(tree_seed, options.get_sampling_options());
 
     if (ci_group_size == 1) {
       std::unique_ptr<Tree> tree = train_tree(data, sampler, options);
       trees.push_back(std::move(tree));
+      progress_bar.increment(1);
     } else {
       std::vector<std::unique_ptr<Tree>> group = train_ci_group(data, sampler, options);
       trees.insert(trees.end(),
           std::make_move_iterator(group.begin()),
           std::make_move_iterator(group.end()));
+      progress_bar.increment(ci_group_size);
     }
   }
   return trees;

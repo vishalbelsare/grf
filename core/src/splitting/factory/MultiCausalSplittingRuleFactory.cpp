@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -26,6 +28,7 @@ MultiCausalSplittingRuleFactory::MultiCausalSplittingRuleFactory(size_t response
   num_treatments(num_treatments) {}
 
 std::unique_ptr<SplittingRule> MultiCausalSplittingRuleFactory::create(size_t max_num_unique_values,
+                                                                       const Data& data,
                                                                        const TreeOptions& options) const {
   return std::unique_ptr<SplittingRule>(new MultiCausalSplittingRule(
       max_num_unique_values,

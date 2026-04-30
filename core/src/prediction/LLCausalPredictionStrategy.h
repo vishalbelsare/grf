@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
   grf is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,7 +19,6 @@
 
 
 #include <cstddef>
-#include <unordered_map>
 #include "Eigen/Dense"
 #include "commons/Data.h"
 #include "prediction/Prediction.h"
@@ -36,14 +37,14 @@ public:
     size_t prediction_length() const;
 
     std::vector<double> predict(size_t sampleID,
-                                const std::unordered_map<size_t, double>& weights_by_sampleID,
+                                const std::pair<std::vector<size_t>, std::vector<double>>& weights_by_sampleID,
                                 const Data& original_data,
                                 const Data& test_data) const;
 
     std::vector<double> compute_variance(
             size_t sampleID,
             const std::vector<std::vector<size_t>>& samples_by_tree,
-            const std::unordered_map<size_t, double>& weights_by_sampleID,
+            const std::pair<std::vector<size_t>, std::vector<double>>& weights_by_sampleID,
             const Data& train_data,
             const Data& data,
             size_t ci_group_size) const;

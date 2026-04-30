@@ -248,7 +248,9 @@ causal_forest <- function(X, Y, W,
                compute.oob.predictions = compute.oob.predictions,
                num.threads = num.threads,
                seed = seed,
-               reduced.form.weight = 0)
+               reduced.form.weight = 0,
+               legacy.seed = get_legacy_seed(),
+               verbose = get_verbose())
 
   tuning.output <- NULL
   if (!identical(tune.parameters, "none")) {
@@ -278,6 +280,7 @@ causal_forest <- function(X, Y, W,
   forest <- do.call.rcpp(causal_train, c(data, args))
   class(forest) <- c("causal_forest", "grf")
   forest[["seed"]] <- seed
+  forest[["num.threads"]] <- num.threads
   forest[["ci.group.size"]] <- ci.group.size
   forest[["X.orig"]] <- X
   forest[["Y.orig"]] <- Y
@@ -312,7 +315,7 @@ causal_forest <- function(X, Y, W,
 #' @param ll.lambda Ridge penalty for local linear predictions. Defaults to NULL and will be cross-validated.
 #' @param ll.weight.penalty Option to standardize ridge penalty by covariance (TRUE),
 #'                  or penalize all covariates equally (FALSE). Penalizes equally by default.
-#' @param num.threads Number of threads used in training. If set to NULL, the software
+#' @param num.threads Number of threads used in prediction. If set to NULL, the software
 #'                    automatically selects an appropriate amount.
 #' @param estimate.variance Whether variance estimates for \eqn{\hat\tau(x)} are desired
 #'                          (for confidence intervals).
@@ -410,7 +413,8 @@ predict.causal_forest <- function(object, newdata = NULL,
    }
    args <- list(forest.object = forest.short,
                 num.threads = num.threads,
-                estimate.variance = estimate.variance)
+                estimate.variance = estimate.variance,
+                verbose = get_verbose())
    ll.args <- list(ll.lambda = ll.lambda,
                    ll.weight.penalty = ll.weight.penalty,
                    linear.correction.variables = linear.correction.variables)

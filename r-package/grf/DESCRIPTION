@@ -1,6 +1,6 @@
 Package: grf
 Title: Generalized Random Forests
-Version: 2.3.2
+Version: 2.6.1
 Authors@R: c(
     person("Julie", "Tibshirani", role = "aut", email = "jtibs@cs.stanford.edu"),
     person("Susan", "Athey", role = "aut"),
@@ -29,13 +29,18 @@ Imports:
     methods,
     Rcpp (>= 0.12.15),
     sandwich (>= 2.4-0)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.3
 Suggests:
     DiagrammeR,
     MASS,
-    rdd,
+    policytree,
+    rdrobust,
     survival (>= 3.2-8),
-    testthat (>= 3.0.4)
-SystemRequirements: GNU make
+    testthat (>= 3.0.4),
+    knitr,
+    rmarkdown
+SystemRequirements: C++17, GNU make
 URL: https://github.com/grf-labs/grf
 Encoding: UTF-8
+VignetteBuilder: knitr
+LazyData: true

@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -22,6 +24,11 @@
 #include "RcppUtilities.h"
 
 using namespace grf;
+
+// [[Rcpp::init]]
+void init_grf_interrupt_handler(DllInfo* dll) {
+  grf::runtime_context.interrupt_handler = []() { Rcpp::checkUserInterrupt(); };
+}
 
 Rcpp::List RcppUtilities::create_forest_object(Forest& forest,
                                                const std::vector<Prediction>& predictions) {

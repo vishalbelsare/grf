@@ -132,11 +132,14 @@ probability_forest <- function(X, Y,
                ci.group.size = ci.group.size,
                compute.oob.predictions = compute.oob.predictions,
                num.threads = num.threads,
-               seed = seed)
+               seed = seed,
+               legacy.seed = get_legacy_seed(),
+               verbose = get_verbose())
 
   forest <- do.call.rcpp(probability_train, c(data, args))
   class(forest) <- c("probability_forest", "grf")
   forest[["seed"]] <- seed
+  forest[["num.threads"]] <- num.threads
   forest[["X.orig"]] <- X
   forest[["Y.orig"]] <- Y
   forest[["Y.relabeled"]] <- Y.relabeled
@@ -160,7 +163,7 @@ probability_forest <- function(X, Y,
 #'                Xi using only trees that did not use the i-th training example). Note
 #'                that this matrix should have the number of columns as the training
 #'                matrix, and that the columns must appear in the same order.
-#' @param num.threads Number of threads used in training. If set to NULL, the software
+#' @param num.threads Number of threads used in prediction. If set to NULL, the software
 #'                    automatically selects an appropriate amount.
 #' @param estimate.variance Whether variance estimates for P[Y = k | X] are desired (for confidence intervals).
 #' @param ... Additional arguments (currently ignored).
@@ -216,7 +219,8 @@ predict.probability_forest <- function(object,
   args <- list(forest.object = forest.short,
                num.classes = object[["num.classes"]],
                num.threads = num.threads,
-               estimate.variance = estimate.variance)
+               estimate.variance = estimate.variance,
+               verbose = get_verbose())
 
   if (!is.null(newdata)) {
     validate_newdata(newdata, object$X.orig, allow.na = TRUE)

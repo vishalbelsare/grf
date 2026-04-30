@@ -223,7 +223,7 @@ This last estimand is recommended by Li et al. (2018) in case of poor overlap (i
 
 Even though there is treatment effect heterogeneity across the population or a sub-population, the average treatment effect might still be zero. To assess if the estimated CATE function `tau(x) = E[Y(1) - Y(0) | X = x]` does well in identifying personalised effects, another summary measure would be useful. One such proposed measure is the Rank-Weighted Average Treatment Effect (RATE), which uses the relative ranking of the estimated CATEs to gauge if it can effectively target individuals with high treatment effects on a separate evaluation data set (and can thus be used to test for the presence of heterogeneous treatment effects).
 
-This approach is implemented in the function `rank_average_treatment_effect`, which provides valid bootstrapped errors of the RATE, along with a Targeting Operator Characteristic (TOC) curve which can be used to visually inspect how well a CATE estimator performs in ordering observations according to treatment benefit. For more details on the RATE metric see Yadlowsky et al., 2021.
+This approach is implemented in the function `rank_average_treatment_effect`, which provides valid bootstrapped errors of the RATE, along with a Targeting Operator Characteristic (TOC) curve which can be used to visually inspect how well a CATE estimator performs in ordering observations according to treatment benefit. For more details on the RATE metric see Yadlowsky et al. (2025).
 
 ### Best Linear Projection of the CATE
 
@@ -403,13 +403,11 @@ While the algorithm in `regression_forest` is very similar to that of classic ra
 
 Overall, GRF is designed to produce the same estimates across platforms when using a consistent value for the random seed through the training option seed. However, there are still some cases where GRF can produce different estimates across platforms. When it comes to cross-platform predictions, the output of GRF will depend on a few factors beyond the forest seed.
 
-One such factor is the compiler that was used to build GRF. Different compilers may have different default behavior around floating-point rounding, and these could lead to slightly different forest splits if the data requires numerical precision. Another factor is how the forest construction is distributed across different threads. Right now, our forest splitting algorithm can give different results depending on the number of threads that were used to build the forest.
+One such factor is the compiler that was used to build GRF. Different compilers may have different default behavior around floating-point behavior and instruction optimizations, and these could lead to slightly different forest splits if the data requires numerical precision. In addition to setting the seed argument, rounding all input data to at most 8 significant digits may help.
 
-Therefore, in order to ensure consistent results, we provide the following recommendations.
-- Make sure arguments `seed` and `num.threads` are the same across platforms
-- Round data to 8 significant digits
+Even though the compiler is the same, different CPU architectures may produce slightly different output. One such example is GRF compiled with clang and run on x86 (Intel) vs. ARM (Apple Silicon).
 
-Also, please note that we have not done extensive testing on Windows platforms, although we do not expect random number generation issues there to be different from Linux/Mac. Regardless of the platform, if results are still not consistent please help us by submitting a Github issue.
+Prior to GRF version 2.4.0, another factor was how the forest construction was distributed across different threads. In these versions, our forest splitting algorithm can give different results depending on the number of threads used to build the forest, meaning that the num.threads argument had to be the same for cross-platform reproducibility. To restore this behavior in current versions of GRF, you can set the global R option `options(grf.legacy.seed=TRUE)` and exactly recover results produced with past versions of the package.
 
 
 ## References
@@ -442,4 +440,4 @@ Van Der Laan, Mark J., and Daniel Rubin. Targeted maximum likelihood learning. *
 
 Wager, Stefan, and Susan Athey. Estimation and inference of heterogeneous treatment effects using random forests. *Journal of the American Statistical Association*, 2018.
 
-Yadlowsky, Steve, Scott Fleming, Nigam Shah, Emma Brunskill, and Stefan Wager. Evaluating Treatment Prioritization Rules via Rank-Weighted Average Treatment Effects. *arXiv preprint arXiv:2111.07966*, 2021.
+Yadlowsky, Steve, Scott Fleming, Nigam Shah, Emma Brunskill, and Stefan Wager. Evaluating Treatment Prioritization Rules via Rank-Weighted Average Treatment Effects. *Journal of the American Statistical Association*, 2025.

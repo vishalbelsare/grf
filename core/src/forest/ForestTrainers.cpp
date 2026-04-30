@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -124,9 +126,9 @@ ForestTrainer ll_regression_trainer(double split_lambda,
                        std::move(prediction_strategy));
 }
 
-ForestTrainer survival_trainer() {
+ForestTrainer survival_trainer(bool fast_logrank) {
   std::unique_ptr<RelabelingStrategy> relabeling_strategy(new NoopRelabelingStrategy());
-  std::unique_ptr<SplittingRuleFactory> splitting_rule_factory(new SurvivalSplittingRuleFactory());
+  std::unique_ptr<SplittingRuleFactory> splitting_rule_factory(new SurvivalSplittingRuleFactory(fast_logrank));
 
   return ForestTrainer(std::move(relabeling_strategy),
                        std::move(splitting_rule_factory),

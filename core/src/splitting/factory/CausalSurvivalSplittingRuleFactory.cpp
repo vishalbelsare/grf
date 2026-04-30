@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -21,7 +23,8 @@
 namespace grf {
 
 std::unique_ptr<SplittingRule> CausalSurvivalSplittingRuleFactory::create(size_t max_num_unique_values,
-                                                                        const TreeOptions& options) const {
+                                                                          const Data& data,
+                                                                          const TreeOptions& options) const {
   return std::unique_ptr<SplittingRule>(new CausalSurvivalSplittingRule(
       max_num_unique_values,
       options.get_min_node_size(),

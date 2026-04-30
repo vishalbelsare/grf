@@ -313,3 +313,21 @@ validate_sandwich <- function(subset.weights) {
     }
   }
 }
+
+get_verbose <- function() {
+  opt <- getOption("grf.verbose", default = FALSE)
+  if (!is.logical(opt) || length(opt) != 1) {
+    stop("grf option `grf.verbose` should be either TRUE or FALSE.")
+  }
+
+  opt
+}
+
+get_legacy_seed <- function() {
+  opt <- getOption("grf.legacy.seed", default = FALSE)
+  if (!is.logical(opt) || length(opt) != 1) {
+    stop("grf option `grf.legacy.seed` should be either TRUE or FALSE.")
+  }
+
+  opt
+}

@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -48,7 +50,11 @@ Rcpp::List causal_survival_train(const Rcpp::NumericMatrix& train_matrix,
                                  unsigned int samples_per_cluster,
                                  bool compute_oob_predictions,
                                  unsigned int num_threads,
-                                 unsigned int seed) {
+                                 unsigned int seed,
+                                 bool legacy_seed,
+                                 bool verbose) {
+  grf::runtime_context.forest_name = "causal survival";
+  grf::runtime_context.verbose_stream = verbose ? &Rcpp::Rcout : nullptr;
   ForestTrainer trainer = causal_survival_trainer(stabilize_splits);
 
   Data data = RcppUtilities::convert_data(train_matrix);
@@ -62,11 +68,12 @@ Rcpp::List causal_survival_train(const Rcpp::NumericMatrix& train_matrix,
   }
 
   ForestOptions options(num_trees, ci_group_size, sample_fraction, mtry, min_node_size, honesty,
-      honesty_fraction, honesty_prune_leaves, alpha, imbalance_penalty, num_threads, seed, clusters, samples_per_cluster);
+      honesty_fraction, honesty_prune_leaves, alpha, imbalance_penalty, num_threads, seed, legacy_seed, clusters, samples_per_cluster);
   Forest forest = trainer.train(data, options);
 
   std::vector<Prediction> predictions;
   if (compute_oob_predictions) {
+    grf::runtime_context.verbose_stream = nullptr;
     ForestPredictor predictor = causal_survival_predictor(num_threads);
     predictions = predictor.predict_oob(forest, data, false);
   }
@@ -79,7 +86,9 @@ Rcpp::List causal_survival_predict(const Rcpp::List& forest_object,
                                    const Rcpp::NumericMatrix& train_matrix,
                                    const Rcpp::NumericMatrix& test_matrix,
                                    unsigned int num_threads,
-                                   bool estimate_variance) {
+                                   bool estimate_variance,
+                                   bool verbose) {
+  grf::runtime_context.verbose_stream = verbose ? &Rcpp::Rcout : nullptr;
   Data train_data = RcppUtilities::convert_data(train_matrix);
   Data data = RcppUtilities::convert_data(test_matrix);
 
@@ -96,7 +105,9 @@ Rcpp::List causal_survival_predict(const Rcpp::List& forest_object,
 Rcpp::List causal_survival_predict_oob(const Rcpp::List& forest_object,
                                        const Rcpp::NumericMatrix& train_matrix,
                                        unsigned int num_threads,
-                                       bool estimate_variance) {
+                                       bool estimate_variance,
+                                       bool verbose) {
+  grf::runtime_context.verbose_stream = verbose ? &Rcpp::Rcout : nullptr;
   Data data = RcppUtilities::convert_data(train_matrix);
 
   Forest forest = RcppUtilities::deserialize_forest(forest_object);

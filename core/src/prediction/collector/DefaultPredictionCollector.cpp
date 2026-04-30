@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -15,10 +17,14 @@
   along with grf. If not, see <http://www.gnu.org/licenses/>.
  #-------------------------------------------------------------------------------*/
 
+#include <chrono>
+#include <exception>
 #include <future>
 #include <stdexcept>
+#include <thread>
 
 #include "prediction/collector/DefaultPredictionCollector.h"
+#include "prediction/collector/SampleWeightComputer.h"
 #include "commons/utility.h"
 
 namespace grf {
@@ -36,7 +42,10 @@ std::vector<Prediction> DefaultPredictionCollector::collect_predictions(
     bool estimate_variance,
     bool estimate_error) const {
 
+  std::atomic<bool> user_interrupt_flag {false};
+
   size_t num_samples = data.get_num_rows();
+  ProgressBar progress_bar(num_samples, "prediction [collection]: ");
   std::vector<uint> thread_ranges;
   split_sequence(thread_ranges, 0, static_cast<uint>(num_samples - 1), num_threads);
 
@@ -60,15 +69,48 @@ std::vector<Prediction> DefaultPredictionCollector::collect_predictions(
                                  std::ref(valid_trees_by_sample),
                                  estimate_variance,
                                  start_index,
-                                 num_samples_batch));
+                                 num_samples_batch,
+                                 std::ref(progress_bar),
+                                 std::ref(user_interrupt_flag)));
   }
 
+  // Periodically check for user interrupts + update progress bar while threads are working.
+  bool working = true;
+  while (working) {
+    try {
+      grf::runtime_context.interrupt_handler();
+      progress_bar.update();
+    } catch (...) {
+      user_interrupt_flag = true;
+      // Adhere to good C++ hygiene and clean up the futures before rethrowing
+      for (auto& future : futures) {
+        if (future.valid()) {
+          try { (void) future.get(); } catch (...) {}
+        }
+      }
+      throw;
+    }
+    // Check if we can stop working
+    working = false;
+    for (const auto& future : futures) {
+      if (future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) {
+        working = true;
+        break;
+      }
+    }
+    if (working) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  }
+
+  // Collect the final results
   for (auto& future : futures) {
     std::vector<Prediction> thread_predictions = future.get();
     predictions.insert(predictions.end(),
                        std::make_move_iterator(thread_predictions.begin()),
                        std::make_move_iterator(thread_predictions.end()));
   }
+  progress_bar.final_update();
 
   return predictions;
 }
@@ -81,21 +123,27 @@ std::vector<Prediction> DefaultPredictionCollector::collect_predictions_batch(
     const std::vector<std::vector<bool>>& valid_trees_by_sample,
     bool estimate_variance,
     size_t start,
-    size_t num_samples) const {
+    size_t num_samples,
+    ProgressBar& progress_bar,
+    std::atomic<bool>& user_interrupt_flag) const {
   size_t num_trees = forest.get_trees().size();
   bool record_leaf_samples = estimate_variance;
 
   std::vector<Prediction> predictions;
   predictions.reserve(num_samples);
 
+  SampleWeightComputer weight_computer(train_data.get_num_rows());
   for (size_t sample = start; sample < num_samples + start; ++sample) {
-    std::unordered_map<size_t, double> weights_by_sample = weight_computer.compute_weights(
+    if (user_interrupt_flag) {
+      return std::vector<Prediction>();
+    }
+    std::pair<std::vector<size_t>, std::vector<double>> weights_by_sample = weight_computer.compute_weights(
         sample, forest, leaf_nodes_by_tree, valid_trees_by_sample);
     std::vector<std::vector<size_t>> samples_by_tree;
 
     // If this sample has no neighbors, then return placeholder predictions. Note
     // that this can only occur when honesty is enabled, and is expected to be rare.
-    if (weights_by_sample.empty()) {
+    if (weights_by_sample.first.empty()) {
       std::vector<double> nan(strategy->prediction_length(), NAN);
       std::vector<double> empty;
       predictions.emplace_back(nan, estimate_variance ? nan : empty, empty, empty);
@@ -136,6 +184,7 @@ std::vector<Prediction> DefaultPredictionCollector::collect_predictions_batch(
     Prediction prediction(point_prediction, variance, {}, {});
     validate_prediction(sample, point_prediction);
     predictions.push_back(prediction);
+    progress_bar.increment(1);
   }
 
   return predictions;

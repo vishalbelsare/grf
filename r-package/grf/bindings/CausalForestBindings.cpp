@@ -1,4 +1,6 @@
 /*-------------------------------------------------------------------------------
+  Copyright (c) 2024 GRF Contributors.
+
   This file is part of generalized random forest (grf).
 
   grf is free software: you can redistribute it and/or modify
@@ -47,7 +49,11 @@ Rcpp::List causal_train(const Rcpp::NumericMatrix& train_matrix,
                         unsigned int samples_per_cluster,
                         bool compute_oob_predictions,
                         unsigned int num_threads,
-                        unsigned int seed) {
+                        unsigned int seed,
+                        bool legacy_seed,
+                        bool verbose) {
+  grf::runtime_context.forest_name = "causal";
+  grf::runtime_context.verbose_stream = verbose ? &Rcpp::Rcout : nullptr;
   ForestTrainer trainer = instrumental_trainer(reduced_form_weight, stabilize_splits);
 
   Data data = RcppUtilities::convert_data(train_matrix);
@@ -59,11 +65,12 @@ Rcpp::List causal_train(const Rcpp::NumericMatrix& train_matrix,
   }
 
   ForestOptions options(num_trees, ci_group_size, sample_fraction, mtry, min_node_size, honesty,
-                        honesty_fraction, honesty_prune_leaves, alpha, imbalance_penalty, num_threads, seed, clusters, samples_per_cluster);
+    honesty_fraction, honesty_prune_leaves, alpha, imbalance_penalty, num_threads, seed, legacy_seed, clusters, samples_per_cluster);
   Forest forest = trainer.train(data, options);
 
   std::vector<Prediction> predictions;
   if (compute_oob_predictions) {
+    grf::runtime_context.verbose_stream = nullptr;
     ForestPredictor predictor = instrumental_predictor(num_threads);
     predictions = predictor.predict_oob(forest, data, false);
   }
@@ -79,7 +86,9 @@ Rcpp::List causal_predict(const Rcpp::List& forest_object,
                           size_t treatment_index,
                           const Rcpp::NumericMatrix& test_matrix,
                           unsigned int num_threads,
-                          bool estimate_variance) {
+                          bool estimate_variance,
+                          bool verbose) {
+  grf::runtime_context.verbose_stream = verbose ? &Rcpp::Rcout : nullptr;
   Data train_data = RcppUtilities::convert_data(train_matrix);
   train_data.set_outcome_index(outcome_index);
   train_data.set_treatment_index(treatment_index);
@@ -101,7 +110,9 @@ Rcpp::List causal_predict_oob(const Rcpp::List& forest_object,
                               size_t outcome_index,
                               size_t treatment_index,
                               unsigned int num_threads,
-                              bool estimate_variance) {
+                              bool estimate_variance,
+                              bool verbose) {
+  grf::runtime_context.verbose_stream = verbose ? &Rcpp::Rcout : nullptr;
   Data data = RcppUtilities::convert_data(train_matrix);
   data.set_outcome_index(outcome_index);
   data.set_treatment_index(treatment_index);
@@ -126,7 +137,9 @@ Rcpp::List ll_causal_predict(const Rcpp::List& forest_object,
                              bool ll_weight_penalty,
                              std::vector<size_t> linear_correction_variables,
                              unsigned int num_threads,
-                             bool estimate_variance) {
+                             bool estimate_variance,
+                             bool verbose) {
+  grf::runtime_context.verbose_stream = verbose ? &Rcpp::Rcout : nullptr;
   Data train_data = RcppUtilities::convert_data(train_matrix);
   train_data.set_outcome_index(outcome_index);
   train_data.set_treatment_index(treatment_index);
@@ -152,7 +165,9 @@ Rcpp::List ll_causal_predict_oob(const Rcpp::List& forest_object,
                                  bool ll_weight_penalty,
                                  std::vector<size_t> linear_correction_variables,
                                  unsigned int num_threads,
-                                 bool estimate_variance) {
+                                 bool estimate_variance,
+                                 bool verbose) {
+  grf::runtime_context.verbose_stream = verbose ? &Rcpp::Rcout : nullptr;
   Data data = RcppUtilities::convert_data(train_matrix);
 
   data.set_outcome_index(outcome_index);

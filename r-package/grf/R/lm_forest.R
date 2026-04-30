@@ -81,7 +81,7 @@
 #'
 #' @examples
 #' \donttest{
-#' if (require("rdd", quietly = TRUE)) {
+#' if (require("rdrobust", quietly = TRUE)) {
 #' # Train a LM Forest to estimate CATEs in a regression discontinuity design.
 #' # Simulate a simple example with a heterogeneous jump in the CEF.
 #' n <- 2000
@@ -93,15 +93,11 @@
 #' tau <- pmax(0.5 * X[, 1], 0)
 #' Y <- tau * W  + 1 / (1 + exp(2 * Z)) + 0.2 * rnorm(n)
 #'
-#' # Compute the Imbens-Kalyanaraman MSE-optimal bandwidth for a local linear regression.
-#' bandwidth <- IKbandwidth(Z, Y, cutoff)
+#' # Compute the MSE-optimal bandwidth for a local linear regression.
+#' bandwidth <- rdrobust::rdbwselect(Y, Z, cutoff)$bws[[1]] # Alternatively, specify bandwith manually.
 #' # Compute kernel weights for a triangular kernel.
-#' sample.weights <- kernelwts(Z, cutoff, bandwidth, "triangular")
-#'
-#' # Alternatively, specify bandwith and triangular kernel weights without using the `rdd` package.
-#' # bandwidth <- # user can hand-specify this.
-#' # dist <- abs((Z - cutoff) / bandwidth)
-#' # sample.weights <- (1 - dist) * (dist <= 1) / bandwidth
+#' dist <- abs((Z - cutoff) / bandwidth)
+#' sample.weights <- (1 - dist) * (dist <= 1) / bandwidth
 #'
 #' # Estimate a local linear regression with the running variable Z conditional on covariates X = x:
 #' # Y = c(x) + tau(x) W + b(x) Z.
@@ -230,7 +226,9 @@ lm_forest <- function(X, Y, W,
                ci.group.size = ci.group.size,
                compute.oob.predictions = compute.oob.predictions,
                num.threads = num.threads,
-               seed = seed)
+               seed = seed,
+               legacy.seed = get_legacy_seed(),
+               verbose = get_verbose())
 
   forest <- do.call.rcpp(multi_causal_train, c(data, args))
   class(forest) <- c("lm_forest", "grf")
@@ -260,7 +258,7 @@ lm_forest <- function(X, Y, W,
 #'                Xi using only trees that did not use the i-th training example). Note
 #'                that this matrix should have the number of columns as the training
 #'                matrix, and that the columns must appear in the same order.
-#' @param num.threads Number of threads used in training. If set to NULL, the software
+#' @param num.threads Number of threads used in prediction. If set to NULL, the software
 #'                    automatically selects an appropriate amount.
 #' @param estimate.variance Whether variance estimates for \eqn{\hat h_k(x)} are desired
 #'                          (for confidence intervals). This option is currently
@@ -275,7 +273,7 @@ lm_forest <- function(X, Y, W,
 #'
 #' @examples
 #' \donttest{
-#' if (require("rdd", quietly = TRUE)) {
+#' if (require("rdrobust", quietly = TRUE)) {
 #' # Train a LM Forest to estimate CATEs in a regression discontinuity design.
 #' # Simulate a simple example with a heterogeneous jump in the CEF.
 #' n <- 2000
@@ -287,15 +285,11 @@ lm_forest <- function(X, Y, W,
 #' tau <- pmax(0.5 * X[, 1], 0)
 #' Y <- tau * W  + 1 / (1 + exp(2 * Z)) + 0.2 * rnorm(n)
 #'
-#' # Compute the Imbens-Kalyanaraman MSE-optimal bandwidth for a local linear regression.
-#' bandwidth <- IKbandwidth(Z, Y, cutoff)
+#' # Compute the MSE-optimal bandwidth for a local linear regression.
+#' bandwidth <- rdrobust::rdbwselect(Y, Z, cutoff)$bws[[1]] # Alternatively, specify bandwith manually.
 #' # Compute kernel weights for a triangular kernel.
-#' sample.weights <- kernelwts(Z, cutoff, bandwidth, "triangular")
-#'
-#' # Alternatively, specify bandwith and triangular kernel weights without using the `rdd` package.
-#' # bandwidth <- # user can hand-specify this.
-#' # dist <- abs((Z - cutoff) / bandwidth)
-#' # sample.weights <- (1 - dist) * (dist <= 1) / bandwidth
+#' dist <- abs((Z - cutoff) / bandwidth)
+#' sample.weights <- (1 - dist) * (dist <= 1) / bandwidth
 #'
 #' # Estimate a local linear regression with the running variable Z conditional on covariates X = x:
 #' # Y = c(x) + tau(x) W + b(x) Z.
@@ -355,7 +349,8 @@ predict.lm_forest <- function(object,
                num.outcomes = num.outcomes,
                num.treatments = num.W,
                num.threads = num.threads,
-               estimate.variance = estimate.variance)
+               estimate.variance = estimate.variance,
+               verbose = get_verbose())
 
   if (!is.null(newdata)) {
     validate_newdata(newdata, X, allow.na = TRUE)
